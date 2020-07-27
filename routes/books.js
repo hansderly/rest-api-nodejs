@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
+const config = require('config');
 const multer = require('multer');
 // const upload = multer({dest: 'uploads/'})
 
@@ -9,18 +10,34 @@ const storage = multer.diskStorage({
 		cb(null, 'uploads/');
 	},
 	filename: (req, file, cb) => {
-		cb(null, file.fieldname + '_' + Date.now() + '.jpg');
+		// console.log(file);
+		const date = new Date();
+		const month = date.getUTCMonth() + 1
+		const day = date.getUTCDate()
+		const year = date.getUTCFullYear()
+		const fullDate = year.toString() + month.toString() + day.toString()
+		cb(null, 'IMG-' + fullDate + '-' + file.originalname );
 	},
 });
 
-const upload = multer({ storage: storage });
+const fileFilter = (req, file, cb) => {
+	if(file.mimetype === 'image/jpg' || file.mimetype === 'image/png') {
+		cb(null, true)
+	}
+	 else {
+		 cb(null, false)
+	 }
+}
 
+const upload = multer({ storage });
+
+//  GET API
 router.get('/', (req, res) => {
 	let sql = 'SELECT * FROM books';
 	let data;
 	db.query(sql, (err, result) => {
 		if (err) throw err;
-		console.log(JSON.parse(JSON.stringify(result)));
+		// console.log(JSON.parse(JSON.stringify(result)));
 		if (result.length == 0) data = { response: 'ok', message: 'no data' };
 		if (result.length > 0) {
 			const resultNumber = result.length;
@@ -43,7 +60,7 @@ router.get('/:id', (req, res) => {
 		if (err) throw err;
 
 		let data;
-		console.log(result);
+		// console.log(result);
 		if (result.length == 0) data = { response: 'ok', message: 'no data' };
 		if (result.length > 0) {
 			const resultNumber = result.length;
@@ -58,16 +75,20 @@ router.get('/:id', (req, res) => {
 	});
 });
 
-router.post('/', upload.any('image'), (req, res) => {
-	const image = req.files;
-	console.log(image);
-	// const { title, author, year } = req.body;
-	// let sql = 'INSERT INTO books ( title, author, img, year) VALUES (?,?,?,?)';
-	// db.query(sql, [title, author, image, year], (err, result) => {
-	// 	if (err) throw err;
-	// 	console.log(result);
-	// });
-	res.json({ message: 'good' });
+// ! .replace(/\s+/g, '')  => function to remove space from a string
+
+router.post('/', upload.single('image'), (req, res) => {
+	const image = req.file.destination + req.file.filename;
+	const { title, author, year } = req.body;
+	const baseURL = config.get("baseURL")
+	const imagePath = baseURL + image;
+	console.log(imagePath, image);
+	let sql = 'INSERT INTO books ( title, author, img, year) VALUES (?,?,?,?)';
+	db.query(sql, [title, author, imagePath, year], (err, result) => {
+		if (err) throw err;
+		// console.log(result);
+	});
+	res.json({ message: 'Book added successfully' });
 });
 
 // router.put()
@@ -80,7 +101,7 @@ router.delete('/:id', (req, res) => {
 		if (err) throw err;
 		console.log(result);
 	});
-	res.json({ message: 'Book deleted' });
+	res.json({ message: `Book ${id} deleted` });
 });
 
 module.exports = router;
