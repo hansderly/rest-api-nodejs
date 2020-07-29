@@ -1,35 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
 const config = require('config');
-const multer = require('multer');
-// const upload = multer({dest: 'uploads/'})
 
-const storage = multer.diskStorage({
-	destination: (req, file, cb) => {
-		cb(null, 'uploads/');
-	},
-	filename: (req, file, cb) => {
-		// console.log(file);
-		const date = new Date();
-		const month = date.getUTCMonth() + 1
-		const day = date.getUTCDate()
-		const year = date.getUTCFullYear()
-		const fullDate = year.toString() + month.toString() + day.toString()
-		cb(null, 'IMG-' + fullDate + '-' + file.originalname );
-	},
-});
-
-const fileFilter = (req, file, cb) => {
-	if(file.mimetype === 'image/jpg' || file.mimetype === 'image/png') {
-		cb(null, true)
-	}
-	 else {
-		 cb(null, false)
-	 }
-}
-
-const upload = multer({ storage });
+const db = require('../database/db');
+const auth = require('../middleware/auth');
+const upload = require('../utils/multer');
 
 //  GET API
 router.get('/', (req, res) => {
@@ -79,18 +54,26 @@ router.get('/:id', (req, res) => {
 
 router.post('/', upload.single('image'), (req, res) => {
 	const image = req.file.destination + req.file.filename;
-	const { title, author, year } = req.body;
-	const baseURL = config.get("baseURL")
+	const baseURL = config.get('baseURL');
 	const imagePath = baseURL + image;
 	console.log(imagePath, image);
+
+	const { title, author, year } = req.body;
 	let sql = 'INSERT INTO books ( title, author, img, year) VALUES (?,?,?,?)';
 	db.query(sql, [title, author, imagePath, year], (err, result) => {
 		if (err) throw err;
 		// console.log(result);
 	});
+
 	res.json({ message: 'Book added successfully' });
 });
 
+setInterval(function () {
+	let sql = 'SELECT * FROM books WHERE id = 1'
+	db.query(sql, (results) => {
+		console.log('1')
+	});
+}, 9000);
 // router.put()
 
 router.delete('/:id', (req, res) => {

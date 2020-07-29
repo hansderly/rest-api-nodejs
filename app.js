@@ -12,7 +12,7 @@ app.use('/uploads',express.static('uploads'))
 
 //  API ROUTES
 app.use('/api/books', books);
-app.use('/api/signup',user)
+app.use('/api/users',user)
 
 app.use((req, res, next) => {
     const method = req.method;
